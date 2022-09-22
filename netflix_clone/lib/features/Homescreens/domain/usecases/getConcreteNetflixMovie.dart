@@ -11,6 +11,7 @@ class GetConcreteNetflixMovie extends UseCase<NetflixEntity, Params> {
 
   GetConcreteNetflixMovie(this.repository);
 
+  @override
   Future<Either<Failures, NetflixEntity>?> call(Params params) async {
     return await repository.getConcreteNetflixMovie(params.title);
   }

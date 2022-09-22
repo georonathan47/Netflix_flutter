@@ -18,7 +18,13 @@ void main() {
 
   const tRuntime = 1;
   const tTitle = 'test';
-  const tNetflixMovie = NetflixEntity(title: 'test', runtime: tRuntime);
+  const tNetflixMovie = NetflixEntity(
+    title: 'test',
+    runtime: tRuntime,
+    adult: false,
+    overview: 'Lorem Ipsum dolor sit amet.',
+    status: 'Released',
+  );
   test(
     'should get movie for the title from the repository',
     () async {
