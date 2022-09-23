@@ -7,13 +7,13 @@ import '../entities/netflix.dart';
 import '../repositories/netflix_repository.dart';
 
 class GetConcreteNetflixMovie extends UseCase<NetflixEntity, Params> {
-  final NetflixRepository repository;
+  final NetflixRepository? repository;
 
   GetConcreteNetflixMovie(this.repository);
 
   @override
-  Future<Either<Failures, NetflixEntity>?> call(Params params) async {
-    return await repository.getConcreteNetflixMovie(params.title);
+  Future<Either<Failures, NetflixEntity?>?> call(Params params) async {
+    return await repository!.getConcreteNetflixMovie(params.title);
   }
 }
 
