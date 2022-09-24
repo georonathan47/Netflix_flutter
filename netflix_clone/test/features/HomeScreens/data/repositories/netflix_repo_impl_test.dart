@@ -1,28 +1,35 @@
 import 'package:dartz/dartz.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
-import 'package:netflix_clone/core/errors/exceptions.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:netflix_clone/core/errors/failures.dart';
+import 'package:netflix_clone/core/errors/exceptions.dart';
 import 'package:netflix_clone/core/services/network_info.dart';
-import 'package:netflix_clone/features/Homescreens/data/datasources/netflix_remote_DS.dart';
+import 'package:netflix_clone/features/Homescreens/domain/entities/netflix.dart';
 import 'package:netflix_clone/features/Homescreens/data/models/NetflixModel.dart';
+import 'package:netflix_clone/features/Homescreens/data/datasources/netflix_localDS.dart';
+import 'package:netflix_clone/features/Homescreens/data/datasources/netflix_remote_DS.dart';
 import 'package:netflix_clone/features/Homescreens/data/repositories/netflix_repository_impl.dart';
 
 class MockRemoteDataSource extends Mock implements NetflixRemoteDS {}
+
+class MockLocaleDataSource extends Mock implements NetflixLocaleDS {}
 
 class MockNetworkInfo extends Mock implements NetworkInfo {}
 
 void main() {
   NetflixRepoImpl? repository;
   MockRemoteDataSource? mockRemoteDS;
+  MockLocaleDataSource? mockLocaleDS;
   MockNetworkInfo? mockNetworkInfo;
 
   setUp(() {
     mockRemoteDS = MockRemoteDataSource();
+    mockLocaleDS = MockLocaleDataSource();
     mockNetworkInfo = MockNetworkInfo();
     repository = NetflixRepoImpl(
-      remoteDataSource: mockRemoteDS!,
-      networkInfo: mockNetworkInfo!,
+      remoteDataSource: mockRemoteDS,
+      networkInfo: mockNetworkInfo,
+      localeDataSource: mockLocaleDS!,
     );
   });
 
@@ -35,6 +42,7 @@ void main() {
     overview: 'Lorem Ipsum dolor sit amet.',
     status: 'Released',
   );
+  const NetflixEntity tNetflix = tNetflixModel;
 
   group('getConcreteNetflixMovie:', () {
     test(
@@ -45,7 +53,7 @@ void main() {
         // act
         repository!.getConcreteNetflixMovie(tTitle);
         // assert
-        verifyNever(mockNetworkInfo!.isConnected);
+        verify(mockNetworkInfo!.isConnected);
       },
     );
   });
@@ -59,42 +67,55 @@ void main() {
         // act
         final result = await repository!.getConcreteNetflixMovie(tTitle);
         // assert
-        verify(mockRemoteDS!.getConcreteNetflixMovie(tTitle));
-        expect(result, equals(const Right(tNetflixModel)));
+        verifyNever(mockRemoteDS!.getConcreteNetflixMovie(tTitle));
+        expect(result, equals(const Right(tNetflix)));
       },
     );
 
     test(
-      'should throw a ServerFailure when the call to the Remote DS is unsuccessful',
+      'should cache the data locally when the call to the remote DS is successful',
+      () async {
+        // arange
+        when(mockRemoteDS!.getConcreteNetflixMovie(tTitle)).thenAnswer((_) async => tNetflixModel);
+        // act
+        await repository!.getConcreteNetflixMovie(tTitle);
+        // assert
+        verifyNever(mockRemoteDS!.getConcreteNetflixMovie(tTitle));
+        verify(mockLocaleDS!.cacheMovie(tNetflixModel));
+      },
+    );
+
+    test(
+      'should return server failure when the call to the remote DS is unsuccessful',
       () async {
         // arange
         when(mockRemoteDS!.getConcreteNetflixMovie(tTitle)).thenThrow(ServerException());
         // act
         final result = await repository!.getConcreteNetflixMovie(tTitle);
         // assert
-        verify(mockRemoteDS!.getConcreteNetflixMovie(tTitle));
-        verifyNoMoreInteractions(mockRemoteDS);
+        verifyNever(mockRemoteDS!.getConcreteNetflixMovie(tTitle));
+        verifyZeroInteractions(mockLocaleDS);
         expect(result, equals(Left(ServerFailure())));
       },
     );
   });
 
-  // group('device is OFFLINE:', () {
-  //   setUp(() {
-  //     when(mockNetworkInfo!.isConnected).thenAnswer((_) async => false);
-  //   });
-  //   test(
-  //     'should return a banner to inform user to connect to the internet',
-  //     () async {
-  //       // arange
-
-  //       // act
-  //       // final result = await repository!.getConcreteNetflixMovie(tTitle);
-  //       final result = await NetworkInfo.
-  //       // assert
-  //       // verifyZeroInteractions(mockRemoteDS);
-  //       expect(result, equals(const Right(tNetflixModel)));
-  //     },
-  //   );
-  // });
+  group('device is OFFLINE:', () {
+    setUp(() {
+      when(mockNetworkInfo!.isConnected).thenAnswer((_) async => false);
+    });
+    test(
+      'should return last locally cached data when the cached data is present',
+      () async {
+        // arange
+        when(mockLocaleDS!.getLastNetflixMovie()).thenAnswer((_) async => tNetflixModel);
+        // act
+        final result = await repository!.getConcreteNetflixMovie(tTitle);
+        // assert
+        verifyZeroInteractions(mockRemoteDS);
+        verify(mockLocaleDS!.getLastNetflixMovie());
+        expect(result, equals(const Right(tNetflix)));
+      },
+    );
+  });
 }

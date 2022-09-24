@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:netflix_clone/features/Homescreens/data/models/NetflixModel.dart';
@@ -25,7 +24,7 @@ void main() {
 
   group('fromJSON', () {
     test(
-      'should return a valid model when the JSON runtimer is an int',
+      'should return a valid model when the JSON runtime is an int',
       () async {
         // arange
         final Map<String, dynamic> jsonMap = jsonDecode(fixture('netflix'));
